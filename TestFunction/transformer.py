@@ -23,7 +23,7 @@ def path_transform(df):
   origin_e, origin_n = transformer.transform(origin_lon, origin_lat)
 
   # transforming the input DataFrame coordinates
-  e, n = transformer.transform(df["longitude"].to_numpy(), df["latitude"].to_numpy())
+  e, n = transformer.transform(df["Longitude"].to_numpy(), df["Latitude"].to_numpy())
 
   # center to (0,0) at the fixed origin, will be important for the second transform
   df["x"] = e - origin_e
@@ -68,6 +68,8 @@ def integrate_arc_length(t, path):
   return magnitude
 
 def calculate_arc_length(t_end, path):
+  #instead of recalculating the arc length each time from 0 to t_end, we can store the cumulative arc length
+  
   """Calculates the arc length along the spline from t=0 to t_end.
 
   Args:
