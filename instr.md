@@ -3,6 +3,8 @@
 First check if virtualenv is installed:
    ```
    pip show virtualenv
+
+   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
    ```
 If not installed, you can install it using pip:
    ```
