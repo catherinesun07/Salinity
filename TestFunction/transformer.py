@@ -16,8 +16,8 @@ def path_transform(df):
   transformer = Transformer.from_crs("EPSG:4326", "EPSG:32610", always_xy=True)
 
   # the fixed origin coordinates
-  origin_lon = -123.705492
-  origin_lat = 48.388598
+  origin_lon = -123.70539093017600
+  origin_lat = 48.38793182373050
 
   # transforming the fixed origin coordinates
   origin_e, origin_n = transformer.transform(origin_lon, origin_lat)
@@ -50,36 +50,50 @@ def L2(t, point, path):
   distance = np.sqrt((x_t - point[0])**2 + (y_t - point[1])**2)
   return distance
 
-def integrate_arc_length(t, path):
-  """Calculates the magnitude of the tangent vector at a given t.
+def calculate_cumulative_arclengths(path):
+    """Precalculate cumulative arc lengths for the entire path using trapezoidal rule.
+    
+    Args:
+        path: The InterpolatePath object containing the splines.
+    
+    Returns:
+        numpy array of cumulative arc lengths at each point
+    """
+    # Get equally spaced points along the path
+    t_array = np.arange(len(path.xCord))
+    
+    # Calculate derivatives
+    dx = np.gradient(path.xCord, t_array)
+    dy = np.gradient(path.yCord, t_array)
+    
+    # Calculate segment lengths
+    segment_lengths = np.sqrt(dx**2 + dy**2)
+    
+    # Use trapezoidal rule for more accurate integration
+    cumulative_lengths = np.zeros_like(t_array, dtype=np.float64)
+    cumulative_lengths[1:] = np.cumsum(0.5 * (segment_lengths[:-1] + segment_lengths[1:]))
+    
+    return cumulative_lengths
 
-  Args:
-    t: The index on the spline.
-    path: The InterpolatePath object containing the splines.
-
-  Returns:
-    The magnitude of the tangent vector at t.
-  """
-  # Calculate numerical derivatives
-  t_array = np.arange(len(path.xCord))
-  dx = np.interp(t, t_array, np.gradient(path.xCord, t_array))
-  dy = np.interp(t, t_array, np.gradient(path.yCord, t_array))
-  magnitude = np.sqrt(dx**2 + dy**2)
-  return magnitude
-
-def calculate_arc_length(t_end, path):
-  #instead of recalculating the arc length each time from 0 to t_end, we can store the cumulative arc length
-  
-  """Calculates the arc length along the spline from t=0 to t_end.
-
-  Args:
-    t_end: The upper limit of integration for the arc length calculation.
-    path: The InterpolatePath object containing the splines.
-
-  Returns:
-    The calculated arc length.
-  """
-  result, _ = quad(lambda t: integrate_arc_length(t, path), 0, t_end)
-  return result
+def calculate_arc_length(t_end, path, cumulative_lengths=None):
+    """Calculates the arc length along the spline from t=0 to t_end.
+    
+    Args:
+        t_end: The parameter value to calculate length to
+        path: The InterpolatePath object
+        cumulative_lengths: Pre-calculated cumulative lengths
+        
+    Returns:
+        The arc length to the given parameter value
+    """
+    if cumulative_lengths is None:
+        # Calculate cumulative lengths if not provided
+        cumulative_lengths = calculate_cumulative_arclengths(path)
+    
+    # Ensure t_end is within bounds
+    t_end = np.clip(t_end, 0, len(path.xCord) - 1)
+    
+    # Use linear interpolation for sub-interval accuracy
+    return np.interp(t_end, np.arange(len(path.xCord)), cumulative_lengths)
 #how do I save th
 

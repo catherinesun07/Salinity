@@ -43,7 +43,7 @@ class InterpolatePath:
             return pickle.load(f)
 
 if __name__ == "__main__":
-    path = InterpolatePath("data/path2.csv")
-    path.save_path_object("transform_function_path.pkl")
+    path = InterpolatePath("data/newpath.csv")
+    path.save_path_object("newpath.pkl")
 
 

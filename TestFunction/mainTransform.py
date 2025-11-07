@@ -6,7 +6,7 @@ import plotFunction
 from scipy.optimize import minimize
 
 DATA_PATH = "data/Sensors-merged.csv"
-FUNC_PATH = "transform_function_path.pkl"
+FUNC_PATH = "newpath.pkl"
 
 
 def loadData(filePath):
@@ -19,6 +19,18 @@ def loadData(filePath):
 #how do I save the function path?
 if __name__ == "__main__":
     df = loadData(DATA_PATH)
+    
+    # Filter out points where y is below threshold, keep all other columns
+    Y_THRESHOLD = -1100  # Adjust this threshold value as needed
+    print(f"Number of points before filtering: {len(df)}")
+    print(f"Columns in dataset: {df.columns.tolist()}")
+    
+    # Keep all columns, just filter rows based on y value
+    mask = df['y'] >= Y_THRESHOLD
+    df = df[mask].copy()
+    df = df.reset_index(drop=True)  # Reset index after filtering
+    
+    
     path = InterpolatePath.load_path_object(FUNC_PATH)
     
     #visualizing path and plots
@@ -27,8 +39,17 @@ if __name__ == "__main__":
 
     # Create new DataFrame with selected columns
     transformed_points = df[['salinity']].copy()
-    # Initialize new columns
-
+    # Initialize new columns for transformed coordinates
+    transformed_points['x_prime'] = np.nan
+    transformed_points['y_prime'] = np.nan
+    
+    # Pre-calculate cumulative arc lengths for efficiency
+    cumulative_lengths = transformer.calculate_cumulative_arclengths(path)
+    
+    # Pre-calculate gradients for normal vectors
+    t_array = np.arange(len(path.xCord))
+    dx_dt_array = np.gradient(path.xCord)
+    dy_dt_array = np.gradient(path.yCord)
     
     for i in range(len(df)):
         point = (df['x'].iloc[i], df['y'].iloc[i])
@@ -36,12 +57,11 @@ if __name__ == "__main__":
         bounds = [(0, len(path.xCord) - 1)]
         result = minimize(transformer.L2, x0=len(path.xCord)/2, 
                         args=(point, path), method='L-BFGS-B', bounds=bounds)
-        #df.loc[i, 'x_prime'] = transformer.calculate_arc_length(result.x[0], path)
-        #df.loc[i, 'closest_point'] = result.x[0] # Use .loc for assignment
         
-        x_prime = transformer.calculate_arc_length(result.x[0], path)
-        transformed_points.loc[i, 'x_prime'] = x_prime#adding transformed x coordinate to new dataframe
         closest_point = result.x[0]
+        # Calculate x_prime using pre-calculated cumulative lengths
+        x_prime = transformer.calculate_arc_length(closest_point, path, cumulative_lengths)
+        transformed_points.loc[i, 'x_prime'] = np.round(x_prime, decimals=6)  # Round to 6 decimal places
         
         """
         Your path is interpolated into 1000 points
@@ -53,23 +73,24 @@ if __name__ == "__main__":
         closest_x = np.interp(result.x[0], np.arange(len(path.xCord)), path.xCord)
         closest_y = np.interp(result.x[0], np.arange(len(path.yCord)), path.yCord)
     
-  #finding normal vector at each closest point on path
-        t = closest_point
-        # Calculate derivatives
-        dx_dt = np.interp(t, np.arange(len(path.xCord)), np.gradient(path.xCord))
-        dy_dt = np.interp(t, np.arange(len(path.yCord)), np.gradient(path.yCord))
-        # Calculate magnitude
+        # Calculate normal vector using pre-calculated gradients
+        dx_dt = np.interp(closest_point, t_array, dx_dt_array)
+        dy_dt = np.interp(closest_point, t_array, dy_dt_array)
         magnitude = np.sqrt(dx_dt**2 + dy_dt**2)
+        
         # Normalize to get unit vector
         normal_x = -dy_dt / magnitude
         normal_y = dx_dt / magnitude
-
         path_normal = np.array([normal_x, normal_y])
+        
+        # Calculate direction vector
         direction_vector = np.array([df.loc[i, 'x'] - closest_x, df.loc[i, 'y'] - closest_y])
         
+        # Calculate y_prime (signed distance)
         y_prime = np.dot(path_normal, direction_vector)
         
-        transformed_points.loc[i, 'y_prime'] = np.linalg.norm(y_prime)#finds the normal distance of point from curve
+        # Store rounded value
+        transformed_points.loc[i, 'y_prime'] = np.round(y_prime, decimals=6)
     
     
     #df.to_csv("data/test_with_closest_points.csv", index=False)
