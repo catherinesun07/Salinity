@@ -15,6 +15,9 @@ matplotlib>=3.7.0
 
 # Interactive mapping (for Folium)
 folium>=0.15.0
-
 # Additional Folium plugins
 branca>=0.7.0
+
+pylance>=2024.6.0
+
+pyDOE>=0.3.8

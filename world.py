@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 class TestFunction:
     def __init__(self, a, c, x_min, x_max, y_min, y_max, noise_std):
@@ -67,8 +68,39 @@ class TestFunction:
         return result_df
 
 if __name__ == "__main__":
-    # Example usage
-    test_function = TestFunction(a=1.49, c=13.62, x_min=0.0, x_max=1400.0, y_min=0.0, y_max=50.0, noise_std=0.5)
-    sample_df = pd.DataFrame({'x': [10, 500, 1500], 'y': [10, 25, 60]})
+    # 1. Setup the "world" with its physical laws
+    x_min, x_max = 0.0, 1400.0
+    y_min, y_max = 0.0, 50.0
+    test_function = TestFunction(a=1.49, c=13.62, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max, noise_std=0.5)
+
+    # 2. Generate a number of random sample points within the bounds
+    n_samples = 100
+    random_x = np.random.uniform(x_min, x_max, n_samples)
+    random_y = np.random.uniform(y_min, y_max, n_samples)
+    sample_df = pd.DataFrame({'x': random_x, 'y': random_y})
+
+    # 3. Get the noisy measurements at these points
     sampled_data = test_function.sample(sample_df)
-    print(sampled_data)
+
+    # 4. For plotting, get the true underlying function values
+    # We sort by x to draw a clean line for the true function
+    x_line = np.linspace(x_min + 1e-9, x_max, 200)
+    true_salinity_line = test_function.analytical_function(x_line, y=0) # y-value doesn't matter for the true function
+
+    # 5. Plot the results to visualize the noise
+    plt.figure(figsize=(12, 7))
+    
+    # Plot the noisy samples as a scatter plot
+    plt.scatter(sampled_data['x'], sampled_data['salinity'], alpha=0.7, label='Noisy Sampled Data')
+    
+    # Plot the true function as a line
+    plt.plot(x_line, true_salinity_line, 'r-', linewidth=2.5, label='True Function')
+    
+    plt.title('True Function vs. Noisy Samples')
+    plt.xlabel('X-coordinate')
+    plt.ylabel('Salinity')
+    plt.legend()
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+    plt.show()
+
+
