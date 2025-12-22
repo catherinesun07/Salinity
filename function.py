@@ -68,7 +68,7 @@ class TestFunction:
 
 if __name__ == "__main__":
     # Example usage
-    test_function = TestFunction(a=1.49, c=13.62, x_min=0.0, x_max=1400.0, y_min=0.0, y_max=50.0, noise_std=0.5)
+    test_function = TestFunction(a=1.49, c=13.62, x_min=0.0, x_max=1400.0, y_min=0.0, y_max=50.0, noise_std=0.8)
     sample_df = pd.DataFrame({'x': [10, 500, 1500], 'y': [10, 25, 60]})
     sampled_data = test_function.sample(sample_df)
     print(sampled_data)

@@ -32,7 +32,9 @@ class TestFunction:
         in_bounds = (x >= self.x_min) & (x <= self.x_max) & (y >= self.y_min) & (y <= self.y_max)
         
         # Calculate salinity only where in bounds
-        safe_x = np.maximum(x, 1e-9)
+        # Protect against log(0): use a small positive floor so the curve
+        # is well-behaved near the origin when plotted.
+        safe_x = np.maximum(x, 1e-1)
         salinity = self.a * np.log(safe_x) + self.c
         
         # Return salinity or NaN
@@ -59,6 +61,7 @@ class TestFunction:
         true_salinity = self.analytical_function(x_vals, y_vals)
         
         # Add noise only to the valid points
+        # Add zero-mean Gaussian noise (previously used mean=2 by mistake)
         noise = np.random.normal(0, self.noise_std, size=true_salinity.shape)
         noisy_salinity = np.where(np.isnan(true_salinity), np.nan, true_salinity + noise)
         
@@ -71,10 +74,10 @@ if __name__ == "__main__":
     # 1. Setup the "world" with its physical laws
     x_min, x_max = 0.0, 1400.0
     y_min, y_max = 0.0, 50.0
-    test_function = TestFunction(a=1.49, c=13.62, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max, noise_std=0.5)
+    test_function = TestFunction(a=1.49, c=13.62, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max, noise_std=.9)
 
     # 2. Generate a number of random sample points within the bounds
-    n_samples = 100
+    n_samples = 500
     random_x = np.random.uniform(x_min, x_max, n_samples)
     random_y = np.random.uniform(y_min, y_max, n_samples)
     sample_df = pd.DataFrame({'x': random_x, 'y': random_y})
@@ -84,11 +87,11 @@ if __name__ == "__main__":
 
     # 4. For plotting, get the true underlying function values
     # We sort by x to draw a clean line for the true function
-    x_line = np.linspace(x_min + 1e-9, x_max, 200)
+    x_line = np.linspace(x_min, x_max, 1000)
     true_salinity_line = test_function.analytical_function(x_line, y=0) # y-value doesn't matter for the true function
 
     # 5. Plot the results to visualize the noise
-    plt.figure(figsize=(12, 7))
+    plt.figure(figsize=(10, 6))
     
     # Plot the noisy samples as a scatter plot
     plt.scatter(sampled_data['x'], sampled_data['salinity'], alpha=0.7, label='Noisy Sampled Data')
